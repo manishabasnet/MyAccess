@@ -14,68 +14,101 @@ class PlaceService {
     
     /// Adds a new place to Firestore
     func addPlace(
-      placeName: String,
-      description: String,
-      location: String,
-      features: [String: [String]],
-      images: [UIImage]? = nil,  // Array of images provided by user
-      userID: String,
-      city: String,
-      completion: @escaping (Result<Void, Error>) -> Void
+        placeName: String,
+        description: String,
+        location: String,
+        features: [String: [String]],
+        images: [UIImage]? = nil,  // Array of images provided by user
+        userID: String,
+        city: String,
+        completion: @escaping (Result<Void, Error>) -> Void
     ) {
-      if let images = images, !images.isEmpty {
-        ImageUploader.uploadMultipleImages(images: images) { uploadedImageURLs in
-          // Update placeData with uploaded image URLs
-          let placeData: [String: Any] = [
-            "placeName": placeName,
-            "description": description,
-            "location": location,
-            "city": city,
-            "features": features,
-            "images": uploadedImageURLs,  // Use uploaded URLs here
-            "likes": [],
-            "dislikes": [],
-            "comments": [:],
-            "userID": userID,
-            "dateCreated": Timestamp(date: Date())
-          ]
-
+        guard let currentUser = Auth.auth().currentUser else {
+            completion(.failure(NSError(domain: "NoUserLoggedIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "User must be logged in."])))
+            return
+        }
+        let userID = currentUser.uid
+        let userRef = db.collection("users").document(userID)
+        
+        if let images = images, !images.isEmpty {
+            ImageUploader.uploadMultipleImages(images: images) { uploadedImageURLs in
+                // Update placeData with uploaded image URLs
+                let placeData: [String: Any] = [
+                    "placeName": placeName,
+                    "description": description,
+                    "location": location,
+                    "city": city,
+                    "features": features,
+                    "images": uploadedImageURLs,  // Use uploaded URLs here
+                    "likes": [],
+                    "dislikes": [],
+                    "comments": [:],
+                    "userID": userID,
+                    "dateCreated": Timestamp(date: Date())
+                ]
+                
+                // Add place data to Firestore
+                self.db.collection("places").addDocument(data: placeData) { error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        print("Success: Place added to Firestore.")
+                        
+                        // After successfully adding place, update the user's contributions
+                        let contributionString = "added \(placeName)"
+                        userRef.updateData([
+                            "contributions": FieldValue.arrayUnion([contributionString])
+                        ]) { error in
+                            if let error = error {
+                                completion(.failure(error))
+                            } else {
+                                print("Contribution added to user.")
+                                completion(.success(()))
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // No images to upload, proceed with regular place data addition
+            let placeData: [String: Any] = [
+                "placeName": placeName,
+                "description": description,
+                "location": location,
+                "city": city,
+                "features": features,
+                "images": [],  // Empty image array if no images uploaded
+                "likes": [],
+                "dislikes": [],
+                "comments": [:],
+                "userID": userID,
+                "dateCreated": Timestamp(date: Date())
+            ]
+            
+            // Add place data to Firestore
             self.db.collection("places").addDocument(data: placeData) { error in
                 if let error = error {
                     completion(.failure(error))
                 } else {
                     print("Success: Place added to Firestore.")
-                    completion(.success(()))
+                    
+                    // After successfully adding place, update the user's contributions
+                    let contributionString = "added \(placeName)"
+                    userRef.updateData([
+                        "contributions": FieldValue.arrayUnion([contributionString])
+                    ]) { error in
+                        if let error = error {
+                            completion(.failure(error))
+                        } else {
+                            print("Contribution added to user.")
+                            completion(.success(()))
+                        }
+                    }
                 }
             }
         }
-      } else {
-        // No images to upload, proceed with regular place data addition
-        let placeData: [String: Any] = [
-          "placeName": placeName,
-          "description": description,
-          "location": location,
-          "city": city,
-          "features": features,
-          "images": [],  // Empty image array if no images uploaded
-          "likes": [],
-          "dislikes": [],
-          "comments": [:],
-          "userID": userID,
-          "dateCreated": Timestamp(date: Date())
-        ]
-
-        // Add place data to Firestore
-        db.collection("places").addDocument(data: placeData) { error in
-          if let error = error {
-            completion(.failure(error))
-          } else {
-            print("Success: Place added to Firestore.")
-            completion(.success(()))
-          }
-        }
-      }
     }
+
         
     func fetch_place(placeID: String, completion: @escaping (Result<Place, Error>) -> Void) {
         let db = Firestore.firestore()
@@ -173,8 +206,16 @@ class PlaceService {
             return
         }
         
+        // Ensure `placeName` exists in the place object
+        guard !place.placeName.isEmpty else {
+            completion(.failure(NSError(domain: "MissingPlaceName", code: -1, userInfo: [NSLocalizedDescriptionKey: "Place name is missing."])))
+            return
+        }
+
+        
         let userID = currentUser.uid
         let placeRef = Firestore.firestore().collection("places").document(placeID)
+        let userRef = Firestore.firestore().collection("users").document(userID)
 
         // Copy current features
         var updatedFeatures = place.features
@@ -190,10 +231,24 @@ class PlaceService {
             if let error = error {
                 completion(.failure(error))
             } else {
-                completion(.success(()))
+                // Construct the contribution string
+                let contributionString = "added \(feature) in \(place.placeName)"
+                
+                // Update the user's contributions
+                userRef.updateData([
+                    "contributions": FieldValue.arrayUnion([contributionString])
+                ]) { error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        print("Contribution added to user.")
+                        completion(.success(()))
+                    }
+                }
             }
         }
     }
+
 
     
     // Add like or dislike to a place

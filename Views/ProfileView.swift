@@ -120,16 +120,31 @@ struct ProfileView: View {
                         }
                         .padding(geometry.size.height * 0.05)
                         
-                        VStack{
+                        // User Contributions
+                        VStack {
                             Text("Your Contributions")
-                                .font(.title2)
+                                .font(.title)
                                 .fontWeight(.semibold)
-                            ForEach(contributions, id: \.self){contribution in
+                                .padding(.bottom, 10)
+                            
+                            // Iterate over contributions
+                            ForEach(contributions, id: \.self) { contribution in
                                 Text(contribution)
-                                    .font(.title3)
+                                    .font(.body) // Adjust font style here
+                                    .padding(.vertical, 2)
+                                    .foregroundColor(.primary)
                             }
                             
+                            // Handle case where there are no contributions
+                            if contributions.isEmpty {
+                                Text("You have no contributions yet.")
+                                    .font(.body)
+                                    .foregroundColor(.gray)
+                                    .padding(.top, 10)
+                            }
                         }
+                        .padding(.horizontal, 20)
+                        .frame(maxWidth: .infinity, alignment: .center)
             }
                     .frame(maxWidth: .infinity, alignment: .center)
             

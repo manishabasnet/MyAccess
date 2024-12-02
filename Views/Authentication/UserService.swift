@@ -22,6 +22,7 @@ class UserService {
             "userId": userId,
             "email": email,
             "name": name,
+            "contribution": [],
             "dateJoined": Timestamp(date: Date()),
             "profileImageURL": imageURL // Always set a value for profileImageURL
         ]

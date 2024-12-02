@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 
 struct PlaceSnapshot: View {
     let searchBarColor = Color(#colorLiteral(red: 0.8039215803, green: 0.8039215803, blue: 0.8039215803, alpha: 1))
@@ -58,14 +59,6 @@ struct PlaceSnapshot: View {
                                         .padding(.top, geometry.size.height * 0.025)
                                         .padding(.bottom, geometry.size.height * 0.015)
                                 }
-                            } else {
-                                Image("spence")
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: geometry.size.width * 0.65, height: geometry.size.height * 0.35, alignment: .top)
-                                    .cornerRadius(20)
-                                    .padding(.top, geometry.size.height * 0.025)
-                                    .padding(.bottom, geometry.size.height * 0.015)
                             }
                             
                             // Building name
@@ -87,12 +80,40 @@ struct PlaceSnapshot: View {
                     
                     // HStack for thumbs up, thumbs down, and other icons (this stays below the main content)
                     HStack {
-                        Image(systemName: "hand.thumbsup.fill")
-                            .font(.largeTitle)
-                            .padding()
-                        Image(systemName: "hand.thumbsdown.fill")
-                            .font(.largeTitle)
-                            .padding()
+                        // Use LikeDislikeButton instead of static icons
+                        LikeDislikeButton(
+                            count: place.likes.count,
+                            iconName: "hand.thumbsup.fill",
+                            isSelected: place.likes.contains(Auth.auth().currentUser?.uid ?? ""),
+                            action: {
+                                // Implement like action
+                                placeService.addLikeDislike(to: place, type: .like) { result in
+                                    switch result {
+                                    case .success:
+                                        fetchPlaceData() // Reload place data to reflect like/dislike changes
+                                    case .failure(let error):
+                                        print("Error adding like: \(error.localizedDescription)")
+                                    }
+                                }
+                            }
+                        )
+                        
+                        LikeDislikeButton(
+                            count: place.dislikes.count,
+                            iconName: "hand.thumbsdown.fill",
+                            isSelected: place.dislikes.contains(Auth.auth().currentUser?.uid ?? ""),
+                            action: {
+                                // Implement dislike action
+                                placeService.addLikeDislike(to: place, type: .dislike) { result in
+                                    switch result {
+                                    case .success:
+                                        fetchPlaceData() // Reload place data to reflect like/dislike changes
+                                    case .failure(let error):
+                                        print("Error adding dislike: \(error.localizedDescription)")
+                                    }
+                                }
+                            }
+                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .center)  // Center the icons horizontally
                     .padding(.top, geometry.size.height * 0.015)  // Add some space between the main content and icons
