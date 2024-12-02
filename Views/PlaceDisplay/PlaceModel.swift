@@ -13,62 +13,79 @@ struct Place: Codable, Identifiable {
     var dislikes: [String] // Array of user IDs who disliked the place
     var comments: [String: [String]] // Dictionary of userID to array of comments
     var userID: String
-    var dateAdded: Date // Timestamp for when the place was added
+    
+    @ServerTimestamp var dateAdded: Timestamp?
 
-    init(from data: [String: Any]) throws {
-        print("Attempting to initialize Place with data: \(data)")
+    // Custom coding keys to handle potential naming differences
+    enum CodingKeys: String, CodingKey {
+        case id
+        case placeName
+        case description
+        case location
+        case city
+        case features
+        case images
+        case likes
+        case dislikes
+        case comments
+        case userID
+        case dateAdded
+    }
 
-        // Handle placeName
-        guard let placeName = data["placeName"] as? String else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid placeName"])
-        }
+    // Initializer with fallback values
+    init(
+        id: String? = nil,
+        placeName: String,
+        description: String,
+        location: String,
+        city: String,
+        features: [String: [String]] = [:],
+        images: [String] = [],
+        likes: [String] = [],
+        dislikes: [String] = [],
+        comments: [String: [String]] = [:],
+        userID: String,
+        dateAdded: Timestamp? = nil
+    ) {
+        self.id = id
         self.placeName = placeName
-
-        // Handle description
-        guard let description = data["description"] as? String else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid description"])
-        }
         self.description = description
-
-        // Handle location
-        guard let location = data["location"] as? String else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid location"])
-        }
         self.location = location
-
-        // Handle city
-        guard let city = data["city"] as? String else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid city"])
-        }
         self.city = city
-
-        // Handle userID
-        guard let userID = data["userID"] as? String else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid userID"])
-        }
+        self.features = features
+        self.images = images
+        self.likes = likes
+        self.dislikes = dislikes
+        self.comments = comments
         self.userID = userID
+        self.dateAdded = dateAdded
+    }
 
-        // Handle features (with fallback to empty dictionary)
-        self.features = data["features"] as? [String: [String]] ?? [:]
-
-        // Handle images (with fallback to empty array)
-        self.images = data["images"] as? [String] ?? []
-
-        // Handle likes (with fallback to empty array)
-        self.likes = data["likes"] as? [String] ?? []
-
-        // Handle dislikes (with fallback to empty array)
-        self.dislikes = data["dislikes"] as? [String] ?? []
-
-        // Handle comments (with fallback to empty dictionary)
-        self.comments = data["comments"] as? [String: [String]] ?? [:]
-
-        // Handle dateAdded
-        guard let dateAddedTimestamp = data["dateCreated"] as? Timestamp ?? data["dateAdded"] as? Timestamp else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid dateAdded"])
+    // Custom init for manual initialization
+    init(from data: [String: Any]) throws {
+        self.id = data["id"] as? String
+        
+        guard let placeName = data["placeName"] as? String,
+              let description = data["description"] as? String,
+              let location = data["location"] as? String,
+              let city = data["city"] as? String,
+              let userID = data["userID"] as? String else {
+            throw NSError(domain: "PlaceInitError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing required fields"])
         }
-        self.dateAdded = dateAddedTimestamp.dateValue()
-
-        print("Place initialized successfully with data: \(self)")
+        
+        self.placeName = placeName
+        self.description = description
+        self.location = location
+        self.city = city
+        self.userID = userID
+        
+        self.features = data["features"] as? [String: [String]] ?? [:]
+        self.images = data["images"] as? [String] ?? []
+        self.likes = data["likes"] as? [String] ?? []
+        self.dislikes = data["dislikes"] as? [String] ?? []
+        self.comments = data["comments"] as? [String: [String]] ?? [:]
+        
+        // Handle dateAdded
+        self.dateAdded = data["dateAdded"] as? Timestamp ?? data["dateCreated"] as? Timestamp
     }
 }

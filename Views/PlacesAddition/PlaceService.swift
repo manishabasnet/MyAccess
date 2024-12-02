@@ -103,28 +103,28 @@ class PlaceService {
             }
         }
     }
-
-
     
     func fetchPlaces(completion: @escaping (Result<[Place], Error>) -> Void) {
-            db.collection("places")
-                .getDocuments { (snapshot, error) in
-                    if let error = error {
-                        completion(.failure(error))
-                    } else {
-                        var places: [Place] = []
-                        for document in snapshot?.documents ?? [] {
-                            do {
-                                let place = try document.data(as: Place.self)
-                                places.append(place)
-                            } catch {
-                                print("Error decoding place: \(error)")
-                            }
+        db.collection("places")
+            .getDocuments { (snapshot, error) in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    var places: [Place] = []
+                    for document in snapshot?.documents ?? [] {
+                        do {
+                            // Use document.data() method to get the dictionary
+                            var place = try Place(from: document.data())
+                            place.id = document.documentID // Ensure the ID is set
+                            places.append(place)
+                        } catch {
+                            print("Error decoding place: \(error)")
                         }
-                        completion(.success(places))
                     }
+                    completion(.success(places))
                 }
-        }
+            }
+    }
     
     // Add comment to a place
     func addComment(to place: Place, comment: String, completion: @escaping (Result<Void, Error>) -> Void) {
