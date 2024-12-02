@@ -17,6 +17,7 @@ struct AddPlaceView: View {
     @State private var features: [String:[String]] = [:]
     @State private var description: String = ""
     @State private var location: String = "" // Replace with location object if needed
+    @State private var city: String = ""
     @State private var images = [UIImage]()
     @State private var selectedImage: UIImage? = nil
     @State private var selectedImages: [UIImage] = []
@@ -57,8 +58,14 @@ struct AddPlaceView: View {
                             .cornerRadius(15)
                     }
                     
-                    Section(header: Text("Location")) {
+                    Section(header: Text("Address")) {
                         TextField("Enter location", text: $location)
+                            .padding()
+                            .background(Color.gray.opacity(0.6))
+                            .cornerRadius(15)
+                        Text("City")
+                            .font(.headline)
+                        TextField("Enter city name", text: $city)
                             .padding()
                             .background(Color.gray.opacity(0.6))
                             .cornerRadius(15)
@@ -67,24 +74,28 @@ struct AddPlaceView: View {
                     Section(header: Text("Features")) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                ForEach(featuresNames, id: \.self) { feature in
-                                    HStack {
-                                        Text(feature)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 5)
-                                            .background(Color.blue.opacity(0.2))
-                                            .cornerRadius(10)
-                                        Button(action: {
-                                            removeFeature(feature)
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.red)
+                                // Get the features for the currentUserID
+                                if let userFeatures = features[authViewModel.currentUserID] {
+                                    ForEach(userFeatures, id: \.self) { feature in
+                                        HStack {
+                                            Text(feature)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 5)
+                                                .background(Color.blue.opacity(0.2))
+                                                .cornerRadius(10)
+                                            Button(action: {
+                                                removeFeature(feature)
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .foregroundColor(.red)
+                                            }
                                         }
+                                        .padding(.trailing, 5)
                                     }
-                                    .padding(.trailing, 5)
                                 }
                             }
                         }
+
                         
                         TextField("Add a feature and press Enter", text: $featureInput, onCommit: addFeature)
                             .padding()
@@ -163,8 +174,9 @@ struct AddPlaceView: View {
                    features[authViewModel.currentUserID] = []
                }
                
-               featuresNames.append(trimmedInput)
                features[authViewModel.currentUserID]?.append(trimmedInput)
+               print("Updated features: \(features)") // Debugging line
+
                featureInput = "" // Reset input field after adding
            }
        }
@@ -172,11 +184,12 @@ struct AddPlaceView: View {
     // Function to remove a feature
     private func removeFeature(_ feature: String) {
         featuresNames.removeAll { $0 == feature }
+        features[authViewModel.currentUserID]?.removeAll { $0 == feature }
     }
     
     // Function to handle form submission
     private func handleSubmit() {
-        guard !placeName.isEmpty, !location.isEmpty, !description.isEmpty, !featuresNames.isEmpty else {
+        guard !placeName.isEmpty, !location.isEmpty, !description.isEmpty, !city.isEmpty else {
             alertMessage = "Please fill in all required fields."
             showAlert = true
             return
@@ -185,7 +198,7 @@ struct AddPlaceView: View {
         let imagesToUpload = selectedImages.isEmpty ? [] : selectedImages
 
         // Call the addPlace function
-        placeService.addPlace(placeName: placeName, description: description, location:location, features:features, images: imagesToUpload, userID: authViewModel.currentUserID ) { result in
+        placeService.addPlace(placeName: placeName, description: description, location:location, features:features, images: imagesToUpload, userID: authViewModel.currentUserID, city: city ) { result in
             switch result {
             case .success:
                 alertMessage = "Place added successfully!"
